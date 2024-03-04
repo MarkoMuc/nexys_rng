@@ -50,13 +50,6 @@ A random number generator implemented in VHDL for Nexys A7 100T board. It uses t
 
 - SPI data is set in MSB first.
 
-1. Setting up the accelerometer:
-    - CS down.
-    - Write command.
-    - PCR address.
-    - Measurement command.
-    - CS up.
-2. Wait.
 3. Reading data:
   - CS down.
   - Read command.
@@ -64,4 +57,3 @@ A random number generator implemented in VHDL for Nexys A7 100T board. It uses t
   - Read 6 bytes.
   - CS up.
   - Wait.
-4. Repeat step 3.
