@@ -59,7 +59,7 @@ begin
     end if;
     end process Gen_SCLK_INT;
 
-    s_gen: entity work.sckl_gen
+    s_gen: entity work.sclk_gen
     generic map(
         WIDTH => 32,
         SYS_CLK_FREQ => 1e8,
@@ -69,6 +69,7 @@ begin
         SYS_CLK => CLK,
         RESET => RESET,
         LIMIT => limit,
-        CE => ce_int.    );
+        CE => ce_int
+        );
 
 end Behavioral;

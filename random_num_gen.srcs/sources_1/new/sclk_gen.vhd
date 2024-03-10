@@ -6,7 +6,7 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
-entity sckl_gen is
+entity sclk_gen is
     generic(
         WIDTH : INTEGER := 32;
         SYS_CLK_FREQ : INTEGER := 1e8; -- Default is 100MHz
@@ -16,9 +16,9 @@ entity sckl_gen is
            RESET : in STD_LOGIC;
            LIMIT : in INTEGER;
            CE : out STD_LOGIC);
-end sckl_gen;
+end sclk_gen;
 
-architecture Behavioral of sckl_gen is
+architecture Behavioral of sclk_gen is
     signal counter : UNSIGNED (WIDTH - 1 downto 0) := (others => '0');
     signal ce_int : STD_LOGIC := '0';
 begin
