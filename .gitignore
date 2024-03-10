@@ -59,3 +59,4 @@ xvlog.*
 
 ## checkpoint files
 *.dcp
+*.wcfg

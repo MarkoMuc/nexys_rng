@@ -20,10 +20,10 @@ entity prescaler is
         LIMIT : in INTEGER; -- Counter limit
         CE : out STD_LOGIC -- Clock enable
     );
-end prescaler;
+end entity;
 
 architecture Behavioral of prescaler is
-    signal count : unsigned (WIDTH - 1 downto 0); 
+    signal count : unsigned (WIDTH - 1 downto 0) := (others => '0'); 
 begin
     process(SYS_CLK, RESET)
     begin
