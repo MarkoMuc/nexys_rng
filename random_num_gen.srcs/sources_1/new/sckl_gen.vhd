@@ -1,46 +1,41 @@
 ----------------------------------------------------------------------------------
--- Company: 
--- Engineer: 
--- 
--- Create Date: 03/10/2024 08:27:03 PM
--- Design Name: 
--- Module Name: sckl_gen - Behavioral
--- Project Name: 
--- Target Devices: 
--- Tool Versions: 
--- Description: 
--- 
--- Dependencies: 
--- 
--- Revision:
--- Revision 0.01 - File Created
--- Additional Comments:
--- 
-V----------------------------------------------------------------------------------
+----------------------------------------------------------------------------------
 
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
-
--- Uncomment the following library declaration if using
--- arithmetic functions with Signed or Unsigned values
---use IEEE.NUMERIC_STD.ALL;
-
--- Uncomment the following library declaration if instantiating
--- any Xilinx leaf cells in this code.
---library UNISIM;
---use UNISIM.VComponents.all;
+use IEEE.NUMERIC_STD.ALL;
 
 entity sckl_gen is
+    generic(
+        WIDTH : INTEGER := 32;
+        SYS_CLK_FREQ : INTEGER := 1e8; -- Default is 100MHz
+        SCLK_FREQ : INTEGER := 1e6 -- Default is 1Mhz
+    );
     Port ( SYS_CLK : in STD_LOGIC;
            RESET : in STD_LOGIC;
-           LIMIT : in STD_LOGIC;
+           LIMIT : in INTEGER;
            CE : out STD_LOGIC);
 end sckl_gen;
 
 architecture Behavioral of sckl_gen is
-
+    signal counter : UNSIGNED (WIDTH - 1 downto 0) := (others => '0');
+    signal ce_int : STD_LOGIC := '0';
 begin
-
-
+    CE <= ce_int;
+    
+    division: process(SYS_CLK, RESET)
+    begin
+        if rising_edge(SYS_CLK) then
+            if RESET = '1' then
+                counter <= (others => '0');
+                ce_int <= '0';
+            elsif counter >= LIMIT then
+                counter <= (others => '0');
+                ce_int <= not ce_int;
+            else
+                counter <= counter + 1;
+            end if;
+        end if;
+    end process;
 end Behavioral;

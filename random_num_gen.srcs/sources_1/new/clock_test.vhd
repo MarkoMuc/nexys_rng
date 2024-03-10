@@ -18,19 +18,21 @@ entity clock_test is
 end clock_test;
 
 architecture Behavioral of clock_test is
-    constant DIV_RATE : integer := ((108e6 / ( 2 * 1e6)) - 1);
+    constant DIV_RATE : integer := ((1e8 / ( 2 * 1e6)) - 1);
     signal count : unsigned (32 - 1 downto 0) := (others => '0');
     signal limit: integer := (1e8/1e6)/2 - 1;
 
     signal Reset_Counters : STD_LOGIC := '0';
     signal RESET : STD_LOGIC := '0';
     signal ce_int : STD_LOGIC := '0';
+    
     signal SCLK_2X_DIV      : integer range 0 to DIV_RATE := 0;
     signal SCLK_2X_TICK     : STD_LOGIC := '0';
     signal SCLK_INT         : STD_LOGIC := '0';
 begin
     CE_1 <= ce_int;
     CE_2 <= SCLK_INT;
+
     Div_2X_SCLK: process (CLK, Reset_Counters, SCLK_2X_DIV)
     begin
     if RISING_EDGE (CLK) then
@@ -57,19 +59,16 @@ begin
     end if;
     end process Gen_SCLK_INT;
 
-    process(CLK, RESET)
-    begin
-        if rising_edge(CLK) then
-            if RESET = '1' then
-                count <= (others => '0');
-                ce_int <= '0';
-            elsif count >= LIMIT then
-                count <= (others => '0');
-                ce_int <= not ce_int;
-            else
-                count <= count + 1;
-            end if;
-        end if;
-    end process;
+    s_gen: entity work.sckl_gen
+    generic map(
+        WIDTH => 32,
+        SYS_CLK_FREQ => 1e8,
+        SCLK_FREQ => 1e6
+    )
+    port map(
+        SYS_CLK => CLK,
+        RESET => RESET,
+        LIMIT => limit,
+        CE => ce_int.    );
 
 end Behavioral;
