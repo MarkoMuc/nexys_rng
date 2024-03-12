@@ -1,23 +1,14 @@
 ----------------------------------------------------------------------------------
--- ADXL362 controller.
--- ADXL362 sensor controller.
+-- SPI master inteface.
+-- Used to communicate over the SPI inteface.
 -- Author: Marko Z. Muc
 --
 -- Description:
+--  - HOLD_SS signal is used to transfer multiple bytes.
 ----------------------------------------------------------------------------------
-
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
-
--- Uncomment the following library declaration if using
--- arithmetic functions with Signed or Unsigned values
---use IEEE.NUMERIC_STD.ALL;
-
--- Uncomment the following library declaration if instantiating
--- any Xilinx leaf cells in this code.
---library UNISIM;
---use UNISIM.VComponents.all;
 
 entity spi_master is
     generic(
@@ -43,18 +34,21 @@ end entity;
 
 architecture Behavioral of spi_master is
     -- Signals and components for the SCLK
-    component prescaler is
+    component sclk_gen is
         generic(
-            WIDTH: INTEGER := 32);
+            WIDTH: INTEGER := 32;
+            SYS_CLK_FREQ : INTEGER := 1e8;
+            SCLK_FREQ : INTEGER := 1e6
+        );
         Port(
             SYS_CLK : in STD_LOGIC;
             RESET : in STD_LOGIC;
-            LIMIT : in INTEGER;
-            CE : out STD_LOGIC);
+            CE : out STD_LOGIC;
+            CE_2X : out STD_LOGIC);
     end component;
     
-    constant FREQ_DIV : integer := (SYS_CLK_FREQ / SCLK_FREQ) - 1;
     
+    signal sclk_2x : STD_LOGIC := '0'; -- 2x SCLK Internal
     signal sclk_int : STD_LOGIC := '0'; -- Internal SCLK
     
     -- State Machine
@@ -77,13 +71,20 @@ architecture Behavioral of spi_master is
     
     -- Control signals
     signal reset_int : STD_LOGIC := '0'; -- Internal reset signal
-    signal cs_int : STD_LOGIC := '1';
-    signal done_1 : STD_LOGIC := '0';
+    signal done_1 : STD_LOGIC := '0'; -- Used to delay done signal for one tick
 
     signal cnt_bits : INTEGER := 0; -- Counter for shifted bits
+    signal shift_in  : STD_LOGIC := '0'; -- Shift data in
+    signal shift_out : STD_LOGIC := '0'; -- Shift data out
+
+    signal cs_int : STD_LOGIC := '1'; -- Internal cs signal
+    signal reset_counters : STD_LOGIC := '0'; -- Reset counters and the SCLK before transmission
     
-    signal reset_counters, shift_out, shift_in : STD_LOGIC;
-    signal load_in, load_out, en_shift, en_sclk : STD_LOGIC := '0';
+    signal load_in : STD_LOGIC := '0'; -- Load in new data to transmit
+    signal load_out : STD_LOGIC := '0'; -- Load out received data
+    
+    signal en_shift : STD_LOGIC := '0'; -- Start shifting data IN/OUT
+    signal en_sclk : STD_LOGIC := '0'; -- Start passing SCLK to SPI interface
     
     -- Data signals
     signal mosi_reg: STD_LOGIC_VECTOR(7 downto 0):= X"00"; -- MOSI shift register
@@ -102,14 +103,16 @@ begin
     MOSI <= mosi_reg(7);
     SCLK <= sclk_int when en_sclk='1' else '0'; 
     
-    sckl_gen: prescaler
+    sclk_generator: sclk_gen
         generic map(
-            WIDTH => 32)
+            WIDTH => 32,
+            SYS_CLK_FREQ => SYS_CLK_FREQ,
+            SCLK_FREQ => SCLK_FREQ)
         port map(
             SYS_CLK => SYS_CLK,
             RESET => reset_counters, 
-            LIMIT => FREQ_DIV,
-            CE => sclk_int);
+            CE => sclk_int,
+            CE_2X => sclk_2x);
     
     SET_DONE: process(SYS_CLK, load_out, done_1)
     begin
@@ -128,9 +131,9 @@ begin
         end if;
     end process;
     
-    shift_out <= '1' when en_shift = '1' and falling_edge(sclk_int) else '0';
-    shift_in <= '1' when en_shift = '1' and rising_edge(sclk_int) else '0';
-
+    shift_in <= '1' when en_shift = '1' and sclk_int = '0' and  sclk_int = '1' else '0';
+    shift_out <= '1' when en_shift = '1' and sclk_2x = '1' and sclk_int = '1' else '0';
+    
     SHIFT_INTO: process(SYS_CLK, shift_in, miso_reg)
     begin
         if rising_edge(SYS_CLK) then
@@ -171,7 +174,7 @@ begin
     begin
         case state is
             when ST_IDLE =>
-                state_vector <= ST_IDLE_VEC;    
+                state_vector <= ST_IDLE_VEC;
             when ST_INIT =>
                 state_vector <= ST_INIT_VEC;    
             when ST_TRD =>
@@ -183,8 +186,8 @@ begin
         end case;
     end process;
 
-    start_trd <= '1' when state = ST_INIT and (HOLD_SS = '1' or falling_edge(sclk_int)) else '0'; 
-    done_trd <= '1' when state = ST_TRD and cnt_bits = 7 and falling_edge(sclk_int) else '0'; 
+    start_trd <= '1' when state = ST_INIT and (HOLD_SS = '1' or (sclk_int = '1' and sclk_2x = '1')) else '0'; 
+    done_trd <= '1' when state = ST_TRD and cnt_bits = 7 and sclk_int = '1' and sclk_2x = '1' else '0'; 
     
     SYNC_PROC: process(SYS_CLK, RESET, next_state)
     begin
