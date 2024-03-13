@@ -54,6 +54,13 @@ architecture Behavioral of top is
         );
     end component;
     
+    type state is (
+        ST_START, -- When device is programmed, waits for components to init.
+        ST_PICK, -- Switch decides which RNG to use
+        ST_GET, -- Send start and wait for data
+        ST_SEND -- Sends data through UART
+    );
+
     constant msgLen : integer := 12;
 
     type msg is Array(0 to msgLen) of STD_LOGIC_VECTOR(7 downto 0);

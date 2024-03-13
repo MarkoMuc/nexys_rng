@@ -62,7 +62,7 @@ architecture Behavioral of spi_master is
     -- Load in, Enable shift, Reset counters, Enable SCLK, Enable CS, Load out + 2 extra bits
     constant ST_IDLE_VEC: STD_LOGIC_VECTOR(7 downto 0) := "10100000";
     constant ST_INIT_VEC: STD_LOGIC_VECTOR(7 downto 0) := "00001001";
-    constant ST_TRD_VEC: STD_LOGIC_VECTOR(7 downto 0) := "01011011";
+    constant ST_TRD_VEC: STD_LOGIC_VECTOR(7 downto 0) :=  "01011011";
     constant ST_DONE_VEC: STD_LOGIC_VECTOR(7 downto 0) := "00001110";
     
     signal state, next_state : STATES := ST_IDLE; -- State control signals
@@ -131,14 +131,14 @@ begin
         end if;
     end process;
     
-    shift_in <= '1' when en_shift = '1' and sclk_int = '0' and  sclk_int = '1' else '0';
+    shift_in <= '1' when en_shift = '1' and sclk_2x = '1' and  sclk_int = '0' else '0';
     shift_out <= '1' when en_shift = '1' and sclk_2x = '1' and sclk_int = '1' else '0';
     
     SHIFT_INTO: process(SYS_CLK, shift_in, miso_reg)
     begin
         if rising_edge(SYS_CLK) then
             if shift_in = '1' then
-                MISO_REG (7 downto 0) <= MISO_REG(6 downto 0) & MISO;
+                miso_reg(7 downto 0) <= miso_reg(6 downto 0) & MISO;
             end if;
         end if;
 

@@ -3,6 +3,10 @@
 -- Author: Marko Z. Muc
 --
 -- Description:
+-- If Start is in, that means start to read
+-- pass back done signal, to be used on the top module, for transport
+-- Otherwise dont do aynthing.
+-- CAm also add a signal, so start is only done after a valid transfer through uart
 ----------------------------------------------------------------------------------
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
