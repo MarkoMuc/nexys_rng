@@ -117,8 +117,8 @@ begin
     SET_DONE: process(SYS_CLK, load_out, done_1)
     begin
         if rising_edge(SYS_CLK) then
-            DONE_1 <= load_out;
-            DONE <= done_1;
+            --DONE_1 <= load_out;
+            DONE <= load_out;
         end if;
     end process;
 

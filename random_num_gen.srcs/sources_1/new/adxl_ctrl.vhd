@@ -83,20 +83,21 @@ architecture Behavioral of adxl_ctrl is
     constant activate_data: spi_data := (W_CMD, PCR_ADR, M_CMD);
     constant read_data: spi_data := (R_CMD, START_ADR, x"00");
     
-    -- signal x_vec: STD_LOGIC_VECTOR(7 downto 0); -- X data, 8 bit resolution
-    -- signal y_vec: STD_LOGIC_VECTOR(7 downto 0); -- Y data, 8 bit resolution
-    -- signal z_vec: STD_LOGIC_VECTOR(7 downto 0); -- Z data, 8 bit resolution    
-    signal dout_array : spi_data := (x"00", x"00", x"00");
-    signal spi_in : STD_LOGIC_VECTOR(7 downto 0) := x"00"; -- Data passed to the SPI interface
+    signal data_array: spi_data := (x"00", x"00", x"00");
+    signal dout_array: spi_data := (x"00", x"00", x"00");
+    signal spi_in: STD_LOGIC_VECTOR(7 downto 0) := x"00"; -- Data passed to the SPI interface
     
     -- Control signals
     signal reset_int : STD_LOGIC := '1'; -- Resets counters
+    signal finished : STD_LOGIC := '0'; -- Signals finished getting data
 begin
     hold_ss <= '1' when state = ST_ACT or state = ST_READ else '0';
     reset_int <= '1' when state = ST_IDLE or state = ST_DONE else '0';
     X_DATA <= dout_array(2);
     Y_DATA <= dout_array(1);
     Z_DATA <= dout_array(0);
+    finished <= '1' when state = ST_DONE else '0';
+    data_array <= activate_data when state = ST_ACT else read_data;
     
     spi_interface: spi_master
     generic map(
@@ -116,14 +117,19 @@ begin
         SCLK => SCLK,
         CS => CSN);
     
-    BYTE_TR: process(SYS_CLK, spi_done_sig, reset_int)
+    SIGNAL_DONE: process(SYS_CLK, finished)
     begin
         if rising_edge(SYS_CLK) then
-            if reset_int = '1' then
-                byte_count <= 0;
-            elsif spi_done_sig = '1' then
-                byte_count <= byte_count + 1 ;
-            end if;
+            FIN <= finished;
+        end if;
+    end process;
+    
+    BYTE_TR: process(spi_done_sig, reset_int)
+    begin
+        if reset_int = '1' then
+            byte_count <= 0;
+        elsif rising_edge(spi_done_sig) then
+            byte_count <= byte_count + 1 ;
         end if;
     end process;
     
@@ -136,26 +142,38 @@ begin
         end if;
     end process;
     
-    OUTPUT_DECODE: process(state, spi_in, byte_count)
+    --set_spi_in: process(SYS_CLK, state, byte_count)
+    --begin
+    --    if rising_edge(SYS_CLK) or spi_done_sig = '1' then
+    --        if byte_count <= 2 then
+    --            spi_in <= data_array(byte_count);
+    --        else
+    --            spi_in <= x"00";
+    --        end if; 
+    --    end if;
+    --end process;
+    OUTPUT_DECODE: process(state, data_array, spi_in, byte_count)
     begin
         case state is
             when ST_ACT =>
-                spi_in <= activate_data(byte_count) when byte_count <= 2 else x"00";
+                spi_in <= data_array(byte_count) when byte_count <= 2 else x"00";
             --when ST_IDLE =>
+                --spi_in <= spi_in;
             --when ST_INIT =>
+                --spi_in <= spi_in;
             when ST_READ =>
-                spi_in <= x"00" when byte_count > 2 else read_data(byte_count);
-            when ST_DONE =>
-                FIN <= '0';
-            when others =>
-                spi_in <= spi_in;
+                spi_in <= data_array(byte_count) when byte_count < 2 else x"00";
+            --when ST_DONE =>
+                --spi_in <= spi_in;
+            when others=>
+                spi_in <= x"00" ;
         end case;
     end process;
     
     start_int <= '1' when state = ST_IDLE or state = ST_READ or state = ST_ACT else '0';
     
     start_spi <= '1' when state = ST_INIT else '0';
-    done_spi <= '1' when ((state = ST_ACT and byte_count > 3) or (state = ST_READ and byte_count > 5)) else '0';
+    done_spi <= '1' when ((state = ST_ACT and byte_count >= 3) or (state = ST_READ and byte_count >= 5)) else '0';
 
     SYNC_PROC: process(SYS_CLK, next_state)
     begin
