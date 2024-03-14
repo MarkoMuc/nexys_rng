@@ -42,7 +42,7 @@ unisims
 *.ip_user_files/
 *.runs/
 *.sim/
-
+*.sources_1/bd/
 ###### for Xilinx Vivado|ISE
 .Xil/
 .cache/
@@ -59,3 +59,4 @@ xvlog.*
 
 ## checkpoint files
 *.dcp
+*.wcfg
