@@ -1,6 +1,6 @@
 # Nexys A7 100T Random Number Generator
 
-A random number generator implemented in VHDL for Nexys A7 100T board. It uses the onboard ADXL362 accelerometer for generating the random numbers.
+A random number generator implemented in VHDL for Nexys A7 100T board. It uses the onboard ADXL362 accelerometer for generating the random numbers. Note this is not an actual RNG, since it needs a random actor, to move the device, since the implementations just reads and sends accelerometer values.
 
 ## ADXL362 Accelerometer
 
@@ -31,37 +31,16 @@ A random number generator implemented in VHDL for Nexys A7 100T board. It uses t
   - CS up.
 - Register read or write commands auto-increment.
 - Registers:
-  - Data:
-      - 0x0E: XDATA_L[7:0]
-      - 0x0F: SX + XDATA_H[3:0]
-      - 0x10: YDATA_L[7:0]
-      - 0x11: SX + YDATA_H[3:0]
-      - 0x12: ZDATA_L[7:0]
-      - 0x13: SX + ZDATA_H[3:0]
-      - The _L registers contains the eight least significant bits.
-      - The _H registers contains the Sign Extended bits and four most significant bits of the 12-bit value.
-      - The SX bits have the same value as The most significant bit.
-      - As such the 12-bit value can be rebuilt as : _H[3:3] _H[2:0] _L[7:0]
   - 0x2D: Power Control Register B1B0 is used to set-up measurement.
     - 10 -> Measurement Mode.
     - Command: 0x02 -> Measurement mode.
   - 0x08 to 0x0A are the 8bit data registers.
+
 ## Usage
 
-- SPI data is set in MSB first.
+Use Vivado to synthesis, implement and generate a bit stream that can be uploaded to the device.
 
-1. Setting up the accelerometer:
-    - CS down.
-    - Write command.
-    - PCR address.
-    - Measurement command.
-    - CS up.
-2. Wait.
-3. Reading data:
-  - CS down.
-  - Read command.
-  - Data start address.
-  - Read 6 bytes.
-  - CS up.
-  - Wait.
-4. Repeat step 3.
+UART contains `uart.py`, which is a simple python script that reads from the UART, it has two modes.
+1. First mode shows [X, Y, Z] values in that format as integers.
+2. Second mode takes X, Y, Z values, changes them to binary and sticks them together. Saves each reading to one line.
+
