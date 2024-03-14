@@ -1,4 +1,11 @@
 ----------------------------------------------------------------------------------
+-- Top module
+-- Checks which generator to use, and sends the data through UART
+-- Author: Marko Z. Muc
+--
+-- Description:
+--  - Baudrate is 9600, 8-bits, 1 stop bit.
+--  - SW0 is used to start reading from accelerometer and transfering
 ---------------------------------------------------------------------------------
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;

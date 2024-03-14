@@ -4,6 +4,10 @@
 -- Author: Marko Z. Muc
 --
 -- Description:
+--  - At first the device sets its Power control to measure mode.
+--  - Afterwards data reads are done through the START signal
+--  - Three reads of 8-bit data are done, one for each coordinate
+--  - After the reads are finished, a signal is sent back to indicate it.
 ----------------------------------------------------------------------------------
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -78,25 +82,25 @@ architecture Behavioral of adxl_ctrl is
     signal dout: STD_LOGIC_VECTOR(7 downto 0); -- SPI dout 
 
     -- Data signals
-    type spi_data is array(0 to 2) of STD_LOGIC_VECTOR(7 downto 0);
+    type spi_data is array(0 to 2) of STD_LOGIC_VECTOR(7 downto 0); -- Array of three 8bit vectors.
     
-    constant activate_data: spi_data := (W_CMD, PCR_ADR, M_CMD);
-    constant read_data: spi_data := (R_CMD, START_ADR, x"00");
+    constant activate_data: spi_data := (W_CMD, PCR_ADR, M_CMD); -- Holds the commands to active the Accl
+    constant read_data: spi_data := (R_CMD, START_ADR, x"00"); -- Holds the commands to read from the Accl
     
-    signal data_array: spi_data := (x"00", x"00", x"00");
-    signal dout_array: spi_data := (x"00", x"00", x"00");
+    signal data_array: spi_data := (x"00", x"00", x"00"); -- Passed to SPI_in
+    signal dout_array: spi_data := (x"00", x"00", x"00"); -- The read X, Y and Z data
     signal spi_in: STD_LOGIC_VECTOR(7 downto 0) := x"00"; -- Data passed to the SPI interface
     
     -- Control signals
     signal reset_int : STD_LOGIC := '1'; -- Resets counters
     signal finished : STD_LOGIC := '0'; -- Signals finished getting data
 begin
-    hold_ss <= '1' when state = ST_ACT or state = ST_READ else '0';
-    reset_int <= '1' when state = ST_IDLE or state = ST_DONE else '0';
+    hold_ss <= '1' when state = ST_ACT or state = ST_READ else '0'; -- Signals a multi data transfer/read
+    reset_int <= '1' when state = ST_IDLE or state = ST_DONE else '0'; -- Used to reset signals and counters
     X_DATA <= dout_array(2);
     Y_DATA <= dout_array(1);
     Z_DATA <= dout_array(0);
-    finished <= '1' when state = ST_DONE else '0';
+    finished <= '1' when state = ST_DONE else '0'; -- Indicates that data has been read
     data_array <= activate_data when state = ST_ACT else read_data;
     
     spi_interface: spi_master
@@ -117,6 +121,7 @@ begin
         SCLK => SCLK,
         CS => CSN);
     
+    -- Signals that reading has finished
     SIGNAL_DONE: process(SYS_CLK, finished)
     begin
         if rising_edge(SYS_CLK) then
@@ -124,6 +129,7 @@ begin
         end if;
     end process;
     
+    -- Counts each transfered/read byte
     BYTE_TR: process(spi_done_sig, reset_int)
     begin
         if reset_int = '1' then
@@ -133,6 +139,7 @@ begin
         end if;
     end process;
     
+    -- Saves the X, Y, Z vectors
     SAVE_OUT: process(SYS_CLK, byte_count, spi_done_sig, state)
     begin
         if rising_edge(SYS_CLK) then
@@ -142,39 +149,28 @@ begin
         end if;
     end process;
     
-    --set_spi_in: process(SYS_CLK, state, byte_count)
-    --begin
-    --    if rising_edge(SYS_CLK) or spi_done_sig = '1' then
-    --        if byte_count <= 2 then
-    --            spi_in <= data_array(byte_count);
-    --        else
-    --            spi_in <= x"00";
-    --        end if; 
-    --    end if;
-    --end process;
+    -- Sets the SPI-IN depending on the state
     OUTPUT_DECODE: process(state, data_array, spi_in, byte_count)
     begin
         case state is
             when ST_ACT =>
                 spi_in <= data_array(byte_count) when byte_count <= 2 else x"00";
-            --when ST_IDLE =>
-                --spi_in <= spi_in;
-            --when ST_INIT =>
-                --spi_in <= spi_in;
             when ST_READ =>
                 spi_in <= data_array(byte_count) when byte_count < 2 else x"00";
-            --when ST_DONE =>
-                --spi_in <= spi_in;
             when others=>
                 spi_in <= x"00" ;
         end case;
     end process;
     
+    -- Internal start signal for the SPI master
     start_int <= '1' when state = ST_IDLE or state = ST_READ or state = ST_ACT else '0';
     
+    -- Initialization has finished, start SPI communication
     start_spi <= '1' when state = ST_INIT else '0';
+    -- Finished reading/transfering data
     done_spi <= '1' when ((state = ST_ACT and byte_count >= 3) or (state = ST_READ and byte_count >= 5)) else '0';
 
+    -- Syncs the states
     SYNC_PROC: process(SYS_CLK, next_state)
     begin
         if RISING_EDGE(SYS_CLK) then
@@ -182,6 +178,7 @@ begin
         end if;
     end process;
     
+
     NEXT_STATE_DECODE: process(START, state, done_spi, start_spi)
     begin
         next_state <= state;
